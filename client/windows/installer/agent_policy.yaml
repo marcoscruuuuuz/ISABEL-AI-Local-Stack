@@ -1,0 +1,26 @@
+allow_paths:
+  - "%USERPROFILE%\\Documents"
+  - "%USERPROFILE%\\Desktop"
+  - "%USERPROFILE%\\Projects"
+  - "C:\\Projetos"
+  - "C:\\Users\\Public\\Documents"
+
+deny_paths:
+  - "C:\\Windows"
+  - "C:\\Program Files"
+  - "C:\\Program Files (x86)"
+  - "%USERPROFILE%\\.ssh"
+
+permissions:
+  read: true
+  write: true
+  exec: false
+  network: false
+
+require_approval_for:
+  - run_cmd
+  - write_file
+  - delete_file
+
+max_edit_bytes: 2000000
+max_read_bytes: 500000
