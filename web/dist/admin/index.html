@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ISABEL Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen">
+<header class="border-b border-gray-800 bg-gray-900/80 sticky top-0 z-10">
+<div class="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center font-bold text-sm">IS</div>
+<div><div class="font-semibold">ISABEL Admin</div><div class="text-xs text-gray-500">Comercial · Frota · Tokens · Segurança</div></div>
+</div>
+<nav class="flex gap-2 text-sm">
+<button onclick="show('dashboard')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700">Dashboard</button>
+<button onclick="show('agents')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700">Agentes</button>
+<button onclick="show('tokens')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700">Tokens</button>
+<button onclick="show('security')" class="px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700">Segurança</button>
+<a href="/chat/" class="px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500">Chat</a>
+</nav></div></header>
+<main class="max-w-7xl mx-auto px-6 py-8 space-y-8">
+<section id="panel-dashboard">
+<h1 class="text-2xl font-semibold mb-6">Dashboard</h1>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="text-gray-400 text-sm">Agentes</div><div class="text-3xl font-bold mt-1" id="stat-total">0</div><div class="text-xs text-gray-500">limite 100</div></div>
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="text-gray-400 text-sm">Online</div><div class="text-3xl font-bold mt-1 text-emerald-400" id="stat-online">0</div></div>
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="text-gray-400 text-sm">Tokens (mês)</div><div class="text-3xl font-bold mt-1" id="stat-tokens">0</div></div>
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="text-gray-400 text-sm">Custo</div><div class="text-3xl font-bold mt-1" id="stat-cost">R$ 0</div></div>
+</div>
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><h2 class="font-medium mb-3">Integrações</h2>
+<div class="grid md:grid-cols-3 gap-3 text-sm">
+<div class="bg-gray-950 rounded-lg p-3 border border-gray-800">Cloudflare Tunnel<br><span class="text-gray-500 text-xs">WSS outbound · Access Token</span></div>
+<div class="bg-gray-950 rounded-lg p-3 border border-gray-800">SGLang / vLLM<br><span class="text-gray-500 text-xs">Modelo central 14B+</span></div>
+<div class="bg-gray-950 rounded-lg p-3 border border-gray-800">Qdrant + Postgres<br><span class="text-gray-500 text-xs">RAG + tenants</span></div>
+</div></div></section>
+<section id="panel-agents" class="hidden">
+<div class="flex items-center justify-between mb-6">
+<h1 class="text-2xl font-semibold">Frota de Agentes Locais (2B)</h1>
+<button onclick="openCreate()" class="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-sm">+ Novo Agente</button>
+</div>
+<p class="text-sm text-gray-400 mb-4">Até 100 agentes por conta. Ex: <code class="text-violet-300">AGENTE-PC-financeiro01</code></p>
+<div id="agents-list" class="space-y-3"></div>
+<div id="modal-create" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-20">
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 w-full max-w-lg space-y-4">
+<h2 class="text-lg font-semibold">Cadastrar Agente Local</h2>
+<input id="f-name" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="AGENTE-PC-financeiro01"/>
+<input id="f-display" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="Financeiro PC 01"/>
+<input id="f-desc" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm" placeholder="Consulta lançamentos do ERP local"/>
+<textarea id="f-systems" class="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm h-24" placeholder='[{"type":"excel","path":"C:\\Sistemas\\lancamentos.xlsx","label":"Lançamentos"}]'></textarea>
+<div class="flex gap-2 justify-end">
+<button onclick="closeCreate()" class="px-4 py-2 rounded-lg bg-gray-800 text-sm">Cancelar</button>
+<button onclick="createAgent()" class="px-4 py-2 rounded-lg bg-violet-600 text-sm">Cadastrar</button>
+</div></div></div></section>
+<section id="panel-tokens" class="hidden">
+<h1 class="text-2xl font-semibold mb-6">Uso e Gasto de Tokens</h1>
+<div class="grid md:grid-cols-2 gap-4">
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="text-sm text-gray-400">Consumo do mês</div><div class="text-4xl font-bold mt-2" id="tok-used">0</div><div class="text-sm text-gray-500 mt-1">de <span id="tok-quota">500000</span></div>
+<div class="mt-4 h-2 bg-gray-800 rounded-full overflow-hidden"><div id="tok-bar" class="h-full bg-violet-500" style="width:0%"></div></div></div>
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5"><div class="text-sm text-gray-400">Custo estimado (R$)</div><div class="text-4xl font-bold mt-2" id="tok-cost">0,00</div></div>
+</div>
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 mt-4"><h3 class="font-medium mb-2">Planos</h3><div id="plans-list" class="grid md:grid-cols-3 gap-3"></div></div>
+</section>
+<section id="panel-security" class="hidden">
+<h1 class="text-2xl font-semibold mb-6">Segurança</h1>
+<div class="grid md:grid-cols-2 gap-4 text-sm">
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-2"><h3 class="font-medium">Agente Local</h3>
+<ul class="text-gray-400 list-disc list-inside space-y-1"><li>Outbound-only (WSS)</li><li>Allowlist de pastas</li><li>Token próprio por agente</li><li>Shell desabilitado</li><li>Modelo 2B só em 127.0.0.1</li></ul></div>
+<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-2"><h3 class="font-medium">Servidor</h3>
+<ul class="text-gray-400 list-disc list-inside space-y-1"><li>Postgres/Redis/Qdrant/SGLang não expostos</li><li>Gateway atrás do Cloudflare Tunnel</li><li>Access Service Token</li><li>Sandbox /workspace</li><li>Auditoria de tokens</li></ul></div>
+</div></section>
+</main>
+<script>
+const API='/api',TOKEN=localStorage.getItem('isabel_token')||'troque-este-token-muito-forte-aqui',TENANT=localStorage.getItem('isabel_tenant')||'default';
+const headers={'Authorization':'Bearer '+TOKEN,'Content-Type':'application/json','X-Tenant-Id':TENANT};
+function show(name){['dashboard','agents','tokens','security'].forEach(p=>document.getElementById('panel-'+p).classList.toggle('hidden',p!==name));if(name==='dashboard')loadStats();if(name==='agents')loadAgents();if(name==='tokens')loadTokens();}
+async function loadStats(){try{const r=await fetch(API+'/fleet/stats',{headers});const s=await r.json();document.getElementById('stat-total').textContent=s.total??0;document.getElementById('stat-online').textContent=s.online??0;}catch(e){}loadTokens(true);}
+async function loadAgents(){const el=document.getElementById('agents-list');el.innerHTML='<div class="text-gray-500">Carregando...</div>';try{const r=await fetch(API+'/fleet/agents',{headers});const agents=await r.json();
+if(!agents.length){el.innerHTML='<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 text-gray-400">Nenhum agente. Clique em Novo Agente.</div>';return;}
+el.innerHTML=agents.map(a=>'<div class="bg-gray-900 border border-gray-800 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-3"><div><div class="font-medium flex items-center gap-2">'+a.name+' <span class="text-xs px-2 py-0.5 rounded-full '+(a.status==='online'?'bg-emerald-500/20 text-emerald-300':a.status==='pending'?'bg-amber-500/20 text-amber-300':'bg-gray-600/40 text-gray-300')+'">'+a.status+'</span></div><div class="text-sm text-gray-400">'+(a.display_name||'')+' · '+(a.description||'')+'</div><div class="text-xs text-gray-500 mt-1">install_key: <code class="text-violet-300">'+a.install_key+'</code></div></div><div class="flex gap-2"><button class="px-3 py-1.5 rounded-lg bg-gray-800 text-sm" onclick="navigator.clipboard.writeText(\''+a.install_key+'\');alert(\'Copiado\')">Copiar key</button><button class="px-3 py-1.5 rounded-lg bg-gray-800 text-sm text-red-300" onclick="delAgent(\''+a.id+'\')">Remover</button></div></div>').join('');}catch(e){el.innerHTML='<div class="text-red-400">Erro ao carregar. Verifique o gateway.</div>';}}
+function openCreate(){document.getElementById('modal-create').classList.remove('hidden');}
+function closeCreate(){document.getElementById('modal-create').classList.add('hidden');}
+async function createAgent(){let systems=[];try{systems=JSON.parse(document.getElementById('f-systems').value||'[]');}catch(e){}
+const body={name:document.getElementById('f-name').value.trim(),display_name:document.getElementById('f-display').value.trim(),description:document.getElementById('f-desc').value.trim(),local_systems:systems,auto_start:true,offline_capable:true};
+if(!body.name)return alert('Nome obrigatório');
+const r=await fetch(API+'/fleet/agents',{method:'POST',headers,body:JSON.stringify(body)});
+if(!r.ok){alert(await r.text());return;}const agent=await r.json();closeCreate();alert('Agente criado!\ninstall_key: '+agent.install_key);loadAgents();loadStats();}
+async function delAgent(id){if(!confirm('Remover?'))return;await fetch(API+'/fleet/agents/'+id,{method:'DELETE',headers});loadAgents();}
+async function loadTokens(silent){try{const r=await fetch(API+'/fleet/usage',{headers});const u=await r.json();
+document.getElementById('stat-tokens').textContent=(u.tokens_used||0).toLocaleString();
+document.getElementById('stat-cost').textContent='R$ '+(u.cost_brl||0).toFixed(2);
+if(!silent){document.getElementById('tok-used').textContent=(u.tokens_used||0).toLocaleString();document.getElementById('tok-quota').textContent=(u.tokens_quota||500000).toLocaleString();document.getElementById('tok-cost').textContent=(u.cost_brl||0).toFixed(2);
+document.getElementById('tok-bar').style.width=Math.min(100,100*(u.tokens_used||0)/Math.max(u.tokens_quota||1,1))+'%';}}catch(e){}
+try{const r=await fetch(API+'/admin/plans',{headers});const plans=await r.json();
+document.getElementById('plans-list').innerHTML=(plans||[]).map(p=>'<div class="bg-gray-950 border border-gray-800 rounded-lg p-4"><div class="font-medium">'+p.name+'</div><div class="text-violet-400 text-xl">R$ '+p.price_brl+'</div><div class="text-xs text-gray-500">'+(p.monthly_tokens/1000)+'k tokens · '+p.seats+' assentos</div></div>').join('');}catch(e){}}
+show('dashboard');
+</script>
+</body>
+</html>
