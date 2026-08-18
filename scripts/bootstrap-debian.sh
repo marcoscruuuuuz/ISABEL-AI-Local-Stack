@@ -1,11 +1,8 @@
 #!/usr/bin/env bash
 # ISABEL AI Local Stack — Bootstrap Debian (instalação nova)
 # Uso:
-#   curl -fsSL https://raw.githubusercontent.com/marcoscruuuuuz/ISABEL-AI-Local-Stack/main/scripts/bootstrap-debian.sh | sudo bash
-# ou:
-#   sudo bash bootstrap-debian.sh
-# Opções:
-#   WITH_GPU=1 WITH_CLOUDFLARE=1 sudo -E bash bootstrap-debian.sh
+#   sudo bash scripts/bootstrap-debian.sh
+# Opções: WITH_GPU=1 WITH_CLOUDFLARE=1 sudo -E bash scripts/bootstrap-debian.sh
 set -euo pipefail
 
 ISABEL_DIR="${ISABEL_DIR:-/opt/isabel}"
@@ -36,7 +33,9 @@ echo ""
 log "Atualizando sistema e pacotes base..."
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq
-apt-get install -y -qq ca-certificates curl git jq openssl gnupg lsb-release apt-transport-https software-properties-common ufw > /dev/null
+# software-properties-common é Ubuntu; no Debian Trixie não existe
+apt-get install -y -qq ca-certificates curl git jq openssl gnupg lsb-release apt-transport-https ufw > /dev/null || \
+  apt-get install -y ca-certificates curl git jq openssl gnupg lsb-release apt-transport-https ufw
 ok "Pacotes base instalados"
 
 if command -v docker >/dev/null 2>&1; then
@@ -46,7 +45,13 @@ else
   install -m 0755 -d /etc/apt/keyrings
   curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
   chmod a+r /etc/apt/keyrings/docker.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+  CODENAME=$(. /etc/os-release && echo "$VERSION_CODENAME")
+  # Docker ainda pode não ter repo trixie; usa bookworm como fallback estável
+  if ! curl -fsSL "https://download.docker.com/linux/debian/dists/${CODENAME}/stable/" >/dev/null 2>&1; then
+    warn "Docker repo sem ${CODENAME}; usando bookworm"
+    CODENAME=bookworm
+  fi
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian ${CODENAME} stable" > /etc/apt/sources.list.d/docker.list
   apt-get update -qq
   apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
   systemctl enable --now docker
@@ -72,8 +77,8 @@ fi
 
 if [[ -d "$ISABEL_DIR/.git" ]]; then
   log "Atualizando repositório em $ISABEL_DIR..."
-  git -C "$ISABEL_DIR" fetch --all
-  git -C "$ISABEL_DIR" checkout "$BRANCH"
+  git -C "$ISABEL_DIR" fetch --all || true
+  git -C "$ISABEL_DIR" checkout "$BRANCH" || true
   git -C "$ISABEL_DIR" pull --ff-only origin "$BRANCH" || true
 else
   log "Clonando ISABEL em $ISABEL_DIR..."
@@ -200,6 +205,6 @@ echo ""
 echo "  Próximos passos:"
 echo "  1. Abra Admin e cadastre AGENTE-PC-..."
 echo "  2. Windows: claim_and_install.ps1 -InstallKey XXXX -ServerApi http://${HOST_IP}:8088"
-echo "  3. GPU: ./scripts/pull_models.sh ... && docker compose --profile gpu up -d"
+echo "  3. GPU: docker compose --profile gpu up -d"
 echo "=============================================="
 ok "Bootstrap concluído."
