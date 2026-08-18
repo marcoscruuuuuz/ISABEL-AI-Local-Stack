@@ -1,0 +1,146 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-isabel}
+      POSTGRES_USER: ${POSTGRES_USER:-isabel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./configs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-isabel}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - isabel-net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - isabel-net
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+      - ./configs/qdrant.yaml:/qdrant/config/production.yaml:ro
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - isabel-net
+
+  sglang:
+    image: lmsysorg/sglang:latest
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - HF_HOME=/models/hf
+      - TRANSFORMERS_CACHE=/models/hf
+    volumes:
+      - ${MODELS_DIR:-./models}:/models
+    command: >
+      python3 -m sglang.launch_server
+      --model-path /models/current-llm
+      --host 0.0.0.0
+      --port 30000
+      --mem-fraction-static ${MEM_FRACTION_STATIC:-0.85}
+      --context-length ${MAX_MODEL_LEN:-8192}
+      --tp ${TP_SIZE:-1}
+      --trust-remote-code
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    networks:
+      - isabel-net
+
+  gateway:
+    build: ./server
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - ISABEL_VERSION=${ISABEL_VERSION:-1.0.2}
+    ports:
+      - "${GATEWAY_PORT:-8088}:8088"
+    volumes:
+      - ./server/app:/app/app
+      - ./server/prompts:/app/prompts
+      - ${CORPUS_DIR:-./corpus}:/corpus
+      - ${WORKSPACE_DIR:-./data/workspace}:/workspace
+      - ${DATA_DIR:-./data}:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      sglang:
+        condition: service_started
+    networks:
+      - isabel-net
+
+  webui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    ports:
+      - "${WEBUI_PORT:-3000}:8080"
+    environment:
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET}
+      - OPENAI_API_BASE_URL=http://gateway:8088/v1
+      - OPENAI_API_KEY=${API_TOKEN}
+      - ENABLE_RAG_WEB_SEARCH=false
+    volumes:
+      - ./data/open-webui:/app/backend/data
+    depends_on:
+      - gateway
+    networks:
+      - isabel-net
+
+  frontend:
+    build: ./web
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PORT:-3001}:80"
+    depends_on:
+      - gateway
+    networks:
+      - isabel-net
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - gateway
+    networks:
+      - isabel-net
+    profiles:
+      - cloudflare
+
+networks:
+  isabel-net:
+    driver: bridge
