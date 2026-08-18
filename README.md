@@ -1,62 +1,45 @@
 # ISABEL AI Local Stack
 
-**Sistema comercial completo de IA local offline-first**  
-Chat estilo ChatGPT + Codex · Deep Research · Agente Windows · Multi-tenant · Cloudflare Tunnel
+**Sistema comercial de IA local offline-first**  
+Chat · Deep Research · Multi-agente · Frota Windows 2B · Multi-tenant · Cloudflare
 
-## Hardware alvo
-- RTX 5060 12GB (ou superior)
-- Xeon 54 núcleos
-- 64 GB DDR4
-- 1 TB SSD (modelos + sistema)
-- 4 TB HD (corpus / aprendizado)
+**Versão:** 1.0.2 · **Repo:** https://github.com/marcoscruuuuuz/ISABEL-AI-Local-Stack
 
-## Arquitetura
+## Documentação completa
 
-```
-PC Cliente (Windows)
-  ISABEL-Agent.exe  ──WSS + Service Token──►  Cloudflare Access
-                                                    │
-                                                    ▼
-                                            Cloudflare Tunnel
-                                                    │
-                                                    ▼
-Servidor Debian (Central)
-  ├── FastAPI Gateway (chat, research, agent, billing)
-  ├── SGLang / vLLM (LLM)
-  ├── Qdrant (vetores)
-  ├── PostgreSQL (clientes, planos, tokens, auditoria)
-  ├── Redis (cache / filas)
-  ├── Open WebUI + Chat custom (React)
-  └── Admin Dashboard
-```
+- **[docs/SYSTEM_COMPLETE.md](docs/SYSTEM_COMPLETE.md)** — arquitetura, API, frota, deploy, maturidade, vs Cursor/Codex
+- [docs/DEPLOYMENT_SERVER.md](docs/DEPLOYMENT_SERVER.md) — instalação Debian
+- [docs/FLEET_AGENTS.md](docs/FLEET_AGENTS.md) — agentes Windows 2B
+- [docs/rules/](docs/rules/) — regras de execução da ISABEL
 
-## Componentes principais
-
-| Camada              | Tecnologia                          | Função                              |
-|---------------------|-------------------------------------|-------------------------------------|
-| LLM Serving         | SGLang (principal) + vLLM           | Inferência local rápida             |
-| Vetores             | Qdrant                              | RAG + memória de longo prazo        |
-| API                 | FastAPI                             | Orquestração + OpenAI-compatible    |
-| Chat Web            | React + Tailwind (estilo ChatGPT)   | Interface cliente                   |
-| Admin               | React                               | Planos, tokens, clientes, auditoria |
-| Agent Windows       | Python → PyInstaller                | Acesso controlado a arquivos        |
-| Conectividade       | Cloudflare Tunnel + Access          | Zero portas abertas                 |
-| Comercial           | PostgreSQL + lógica de franquia     | Multi-tenant, billing por tokens    |
-
-## Instalação rápida (Debian)
+## Subir rápido (sem GPU)
 
 ```bash
-git clone https://github.com/marcoscruuuuuz/ISABEL-AI-Local-Stack.git /opt/isabel
-cd /opt/isabel
-cp .env.example .env
-# Edite .env (API_TOKEN, Cloudflare, Postgres, etc.)
-./install.sh
-./scripts/pull_models.sh Qwen/Qwen2.5-14B-Instruct-AWQ
-docker compose up -d
+cp .env.example .env   # defina POSTGRES_PASSWORD e API_TOKEN
+docker compose up -d --build
+# Admin http://IP:3001/admin/  ·  Chat http://IP:3001/chat/
 ```
 
-## Versão
-1.0.2
+Com GPU: `docker compose --profile gpu up -d`  
+Com Cloudflare: `docker compose --profile cloudflare up -d`
+
+## Arquitetura (resumo)
+
+```
+Windows: fleet_agent + modelo 2B  ──WSS──►  Cloudflare  ──►  Debian
+  Gateway FastAPI · SGLang · Qdrant · Redis · Postgres · Admin/Chat
+```
+
+## Uso no chat
+
+```
+AGENTE-PC-financeiro01 quantos R$ foram lançados hoje?
+```
+
+## Hardware alvo
+
+RTX 12GB+ · CPU multi-core · 32–64 GB RAM · SSD para modelos
 
 ## Licença
-Proprietária – Innovation RP Telecom
+
+Uso conforme contrato comercial (Innovation RP Telecom).
