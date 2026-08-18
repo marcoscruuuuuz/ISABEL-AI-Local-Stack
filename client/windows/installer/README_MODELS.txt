@@ -12,3 +12,4 @@ Download:
   https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF
 
 Após colocar o arquivo, execute start_ide_brain.ps1
+O runtime escuta apenas em 127.0.0.1:11434.
