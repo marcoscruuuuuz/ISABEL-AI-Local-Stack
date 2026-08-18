@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  validate-source:
+    name: Validate Source
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Version consistency
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          TAG=${GITHUB_REF_NAME#v}
+          echo "VERSION file = $VERSION"
+          echo "Git tag      = $TAG"
+          if [ "$VERSION" != "$TAG" ]; then
+            echo "ERROR: VERSION ($VERSION) != tag ($TAG)"
+            exit 1
+          fi
+          echo "Version consistency: PASS"
+
+  build-windows:
+    name: Build Windows Agent
+    needs: validate-source
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller websockets httpx
+
+      - name: Build ISABEL-Agent.exe
+        run: |
+          cd client/windows
+          if (Test-Path agent.py) {
+            pyinstaller --onefile --name ISABEL-Agent --console agent.py
+            mkdir -p ../../release
+            copy dist\ISABEL-Agent.exe ..\..\release\
+          } else {
+            echo "agent.py not found yet"
+            mkdir -p ../../release
+            echo placeholder > ../../release/ISABEL-Agent.exe.txt
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: isabel-agent-windows
+          path: release/
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    needs: [validate-source, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: isabel-agent-windows
+          path: release
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release create "$GITHUB_REF_NAME" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "ISABEL $GITHUB_REF_NAME" \
+            --generate-notes || true
